@@ -1,17 +1,27 @@
 {
   "name": "finance-investment",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Финансы и инвестиция — financial ledger, trading and investment accounting platform",
   "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio"
   },
   "dependencies": {
-    "@prisma/client": "latest"
+    "@prisma/client": "latest",
+    "lightweight-charts": "latest",
+    "next": "latest",
+    "react": "latest",
+    "react-dom": "latest"
   },
   "devDependencies": {
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
     "prisma": "latest",
     "typescript": "latest"
   }
