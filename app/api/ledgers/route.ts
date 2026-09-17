@@ -1,0 +1,3 @@
+import {NextResponse} from 'next/server';import {prisma} from '../../../src/lib/prisma';
+export async function GET(){const rows=await prisma.ledger.findMany({where:{status:'ACTIVE'},include:{accounts:{include:{asset:true}}},orderBy:{createdAt:'asc'}});return NextResponse.json(rows)}
+export async function POST(req:Request){try{const b=await req.json();if(!b.name?.trim())return NextResponse.json({error:'Название Ledger обязательно'},{status:400});const row=await prisma.ledger.create({data:{name:b.name.trim(),description:b.description?.trim()||null,baseCurrency:b.baseCurrency||'USD'}});return NextResponse.json(row,{status:201})}catch(e){return NextResponse.json({error:'Не удалось создать Ledger'},{status:500})}}
