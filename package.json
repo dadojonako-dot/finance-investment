@@ -1,6 +1,6 @@
 {
   "name": "finance-investment",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "Финансы и инвестиция — financial ledger, trading and investment accounting platform",
   "scripts": {
@@ -13,6 +13,8 @@
   },
   "dependencies": {
     "@prisma/client": "latest",
+    "bcryptjs": "latest",
+    "jose": "latest",
     "lightweight-charts": "latest",
     "next": "latest",
     "react": "latest",
