@@ -1,0 +1,3 @@
+import {NextResponse} from 'next/server';import {prisma} from '../../../src/lib/prisma';
+export async function GET(){return NextResponse.json(await prisma.project.findMany({orderBy:{createdAt:'asc'}}))}
+export async function POST(req:Request){try{const b=await req.json();if(!b.name?.trim())return NextResponse.json({error:'Название проекта обязательно'},{status:400});const row=await prisma.project.create({data:{name:b.name.trim(),description:b.description||null,status:b.status||'ACTIVE',isGeneral:Boolean(b.isGeneral),startDate:b.startDate?new Date(b.startDate):null,targetAmount:b.targetAmount||null}});return NextResponse.json(row,{status:201})}catch{return NextResponse.json({error:'Не удалось создать проект'},{status:500})}}
