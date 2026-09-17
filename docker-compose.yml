@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: finance_investment
+      POSTGRES_USER: finance_user
+      POSTGRES_PASSWORD: finance_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - finance_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  finance_postgres_data:
