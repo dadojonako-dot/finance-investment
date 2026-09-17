@@ -1,0 +1,1 @@
+import {NextResponse} from 'next/server';import {getCurrentUser} from '../../../../src/auth/server';export async function GET(){const user=await getCurrentUser();return user?NextResponse.json(user):NextResponse.json({error:'Не авторизован'},{status:401})}
