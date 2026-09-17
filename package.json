@@ -1,0 +1,18 @@
+{
+  "name": "finance-investment",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Финансы и инвестиция — financial ledger, trading and investment accounting platform",
+  "scripts": {
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:studio": "prisma studio"
+  },
+  "dependencies": {
+    "@prisma/client": "latest"
+  },
+  "devDependencies": {
+    "prisma": "latest",
+    "typescript": "latest"
+  }
+}
