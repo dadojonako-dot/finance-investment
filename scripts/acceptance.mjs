@@ -23,7 +23,7 @@ try{
  await api('/api/balances',null,'GET',401);pass('Anonymous requests denied');
  if(await db.user.count()===0){
   await api('/api/auth/bootstrap',credentials);writeFileSync(credentialsPath,JSON.stringify(credentials));pass('Setup OWNER');
- }else pass('Existing acceptance OWNER reused');
+ }else {await api('/api/auth/login',credentials,'POST',200);pass('Existing acceptance OWNER reused');}
  await api('/api/auth/logout',{},'POST',200);cookie='';
  await api('/api/auth/login',credentials,'POST',200);pass('Logout/login');
  await api('/api/auth/bootstrap',credentials,'POST',409);pass('Repeated bootstrap denied');
