@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 
 export const D = Prisma.Decimal;
+D.set({ precision: 80, rounding: D.ROUND_HALF_UP });
 export type Money = Prisma.Decimal | string | number;
 export class InputError extends Error {}
 
