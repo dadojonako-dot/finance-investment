@@ -1,4 +1,4 @@
-'use client';
+'use client';import {apiFetch as fetch,readJson} from '../../src/lib/client-api';import {formatMoney} from '../../src/lib/format-money';
 import {useEffect,useMemo,useState} from 'react';
 type Account={id:string;name:string;type:string;openingBalance:string|number;asset:{code:string}};type Ledger={id:string;name:string;description?:string|null;baseCurrency:string;accounts:Account[]};
 const typeMap:Record<string,string>={CASH:'Касса',BANK:'Банк',BANK_CARD:'Банковская карта',E_WALLET:'Электронный кошелек',CRYPTO_WALLET:'Криптокошелек',EXCHANGE_SPOT:'Биржа Spot',EXCHANGE_FUTURES:'Биржа Futures',OTHER:'Другое'};
