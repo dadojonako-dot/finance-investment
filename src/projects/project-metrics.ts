@@ -1,2 +1,7 @@
-export type ProjectMovement={type:'INCOME'|'EXPENSE'|'INVESTMENT'|'INVESTMENT_RETURN'|'COMMISSION';usdAmount:number};
-export function projectMetrics(rows:ProjectMovement[]){let income=0,expenses=0,investments=0,returns=0,fees=0;for(const r of rows){if(r.type==='INCOME')income+=r.usdAmount;if(r.type==='EXPENSE')expenses+=r.usdAmount;if(r.type==='INVESTMENT')investments+=r.usdAmount;if(r.type==='INVESTMENT_RETURN')returns+=r.usdAmount;if(r.type==='COMMISSION')fees+=r.usdAmount}const operatingResult=income-expenses-fees;const netCashFlow=income+returns-expenses-investments-fees;const investmentBalance=investments-returns;return{income,expenses,investments,returns,fees,operatingResult,netCashFlow,investmentBalance}}
+import { Movement, totals } from '../accounting/money';
+export type ProjectMovement = Movement;
+export function projectMetrics(rows: ProjectMovement[]) {
+  const m = totals(rows);
+  return { income: m.income, expenses: m.expense, investments: m.invested, returns: m.returned,
+    fees: m.commissions, operatingResult: m.result, netCashFlow: m.netCashFlow, investmentBalance: m.investmentBalance };
+}

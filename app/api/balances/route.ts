@@ -1,2 +1,29 @@
-import {NextResponse} from 'next/server';import {prisma} from '../../../src/lib/prisma';
-export async function GET(req:Request){try{const u=new URL(req.url);const ledgerId=u.searchParams.get('ledgerId')||undefined;const accounts=await prisma.account.findMany({where:{ledgerId,isActive:true},include:{asset:true,ledger:true,transactions:{select:{amount:true,usdAmount:true}}},orderBy:{createdAt:'asc'}});const rows=accounts.map(a=>{const movements=a.transactions.reduce((s,t)=>s+Number(t.amount),0);const usdMovements=a.transactions.reduce((s,t)=>s+Number(t.usdAmount||0),0);const opening=Number(a.openingBalance);return{id:a.id,name:a.name,type:a.type,ledgerId:a.ledgerId,ledgerName:a.ledger.name,assetCode:a.asset.code,openingBalance:opening,movements,balance:opening+movements,usdMovements}});const byAsset=Object.values(rows.reduce<Record<string,{assetCode:string;balance:number}>>((m,r)=>{m[r.assetCode]??={assetCode:r.assetCode,balance:0};m[r.assetCode].balance+=r.balance;return m},{}));return NextResponse.json({accounts:rows,byAsset})}catch{return NextResponse.json({error:'Не удалось рассчитать остатки'},{status:500})}}
+import { NextResponse } from 'next/server';
+import { prisma } from '../../../src/lib/prisma';
+import { authorize } from '../../../src/auth/server';
+import { D, sumMoney, dateFilter, valueUsd } from '../../../src/accounting/money';
+import { apiError } from '../../../src/lib/api-error';
+export async function GET(req: Request) {
+  const auth = await authorize('transactions.view');
+  if (auth.response) return auth.response;
+  try {
+    const params = new URL(req.url).searchParams;
+    const period = dateFilter(params);
+    const accounts = await prisma.account.findMany({
+      where: { ledgerId: params.get('ledgerId') || undefined, isActive: true },
+      include: { asset: true, ledger: true, transactions: { where: period?.lt ? { operationDate: { lt: period.lt } } : undefined } },
+      orderBy: { createdAt: 'asc' },
+    });
+    const rows = accounts.map(a => {
+      const opening = a.openingBalance.plus(sumMoney(a.transactions.filter(t => period?.gte && t.operationDate < (period.gte as Date)).map(t => t.amount)));
+      const tx = a.transactions.filter(t => !period?.gte || t.operationDate >= (period.gte as Date));
+      const movements = sumMoney(tx.map(t => t.amount));
+      return { id: a.id, name: a.name, type: a.type, ledgerId: a.ledgerId, ledgerName: a.ledger.name,
+        assetCode: a.asset.code, openingBalance: opening, movements, balance: opening.plus(movements),
+        usdMovements: sumMoney(tx.map(valueUsd)), unvaluedCount: tx.filter(t => valueUsd(t) == null).length };
+    });
+    const grouped = new Map<string, InstanceType<typeof D>>();
+    for (const r of rows) grouped.set(r.assetCode, (grouped.get(r.assetCode) ?? new D(0)).plus(r.balance));
+    return NextResponse.json({ accounts: rows, byAsset: [...grouped].map(([assetCode, balance]) => ({ assetCode, balance })) });
+  } catch (error) { return apiError(error); }
+}

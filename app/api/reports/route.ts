@@ -1,1 +1,33 @@
-import {NextResponse} from 'next/server';import {prisma} from '../../../src/lib/prisma';import {authorize} from '../../../src/auth/server';export async function GET(req:Request){const auth=await authorize('reports.view');if(auth.response)return auth.response;try{const u=new URL(req.url),ledgerId=u.searchParams.get('ledgerId')||undefined,projectId=u.searchParams.get('projectId')||undefined,from=u.searchParams.get('from'),to=u.searchParams.get('to');const operationDate:any={};if(from)operationDate.gte=new Date(from+'T00:00:00');if(to)operationDate.lte=new Date(to+'T23:59:59.999');const tx=await prisma.transaction.findMany({where:{ledgerId,projectId,...(from||to?{operationDate}:{})},include:{project:true}});const spot=await prisma.spotTrade.findMany({where:{ledgerId,...(from||to?{tradeDate:operationDate}:{})}});const futures=await prisma.futuresTrade.findMany({where:{ledgerId,...(from||to?{openedAt:operationDate}:{})}});const n=(x:any)=>Number(x||0),usd=(x:any)=>Math.abs(n(x.usdAmount));const sum=(type:string)=>tx.filter(x=>x.type===type).reduce((s,x)=>s+usd(x),0);const income=sum('INCOME'),expense=sum('EXPENSE'),investment=sum('INVESTMENT'),investmentReturn=sum('INVESTMENT_RETURN'),commission=sum('COMMISSION');const byAsset:Record<string,number>={};for(const x of tx)byAsset[x.assetCode]=(byAsset[x.assetCode]||0)+n(x.amount);const projectMap:Record<string,any>={};for(const x of tx){const k=x.projectId||'none',name=x.project?.name||'Без проекта';projectMap[k]??={id:k,name,income:0,expense:0,investment:0,returns:0,fees:0};const p=projectMap[k],v=usd(x);if(x.type==='INCOME')p.income+=v;if(x.type==='EXPENSE')p.expense+=v;if(x.type==='INVESTMENT')p.investment+=v;if(x.type==='INVESTMENT_RETURN')p.returns+=v;if(x.type==='COMMISSION')p.fees+=v}const projects=Object.values(projectMap).map((p:any)=>({...p,result:p.income-p.expense-p.fees,netCashFlow:p.income+p.returns-p.expense-p.investment-p.fees}));const spotPnl=spot.reduce((s,x)=>s+n(x.realizedPnl),0),spotFees=spot.reduce((s,x)=>s+n(x.fee),0),futuresPnl=futures.reduce((s,x)=>s+n(x.realizedPnl),0),futuresFees=futures.reduce((s,x)=>s+n(x.fees)+n(x.funding),0);return NextResponse.json({summary:{income,expense,investment,investmentReturn,commission,operatingResult:income-expense-commission,netCashFlow:income+investmentReturn-expense-investment-commission},trading:{spotPnl,spotFees,futuresPnl,futuresFees,totalRealizedPnl:spotPnl+futuresPnl},byAsset:Object.entries(byAsset).map(([asset,amount])=>({asset,amount})),projects,counts:{transactions:tx.length,spotTrades:spot.length,futuresTrades:futures.length}})}catch{return NextResponse.json({error:'Не удалось сформировать отчет'},{status:500})}}
+import { NextResponse } from 'next/server';
+import { prisma } from '../../../src/lib/prisma';
+import { authorize } from '../../../src/auth/server';
+import { D, totals, dateFilter, sumMoney } from '../../../src/accounting/money';
+import { apiError } from '../../../src/lib/api-error';
+export async function GET(req: Request) {
+  const auth = await authorize('reports.view');
+  if (auth.response) return auth.response;
+  try {
+    const p = new URL(req.url).searchParams, ledgerId = p.get('ledgerId') || undefined, projectId = p.get('projectId') || undefined;
+    const period = dateFilter(p);
+    const [tx, spot, futures] = await Promise.all([
+      prisma.transaction.findMany({ where: { ledgerId, projectId, operationDate: period }, include: { project: true } }),
+      projectId ? [] : prisma.spotTrade.findMany({ where: { ledgerId, tradeDate: period } }),
+      projectId ? [] : prisma.futuresTrade.findMany({ where: { ledgerId, status: 'CLOSED', closedAt: period } }),
+    ]);
+    const t = totals(tx);
+    const byAsset = new Map<string, InstanceType<typeof D>>();
+    for (const row of tx) byAsset.set(row.assetCode, (byAsset.get(row.assetCode) ?? new D(0)).plus(row.amount));
+    const projects = [...new Set(tx.map(x => x.projectId))].map(id => {
+      const rows = tx.filter(x => x.projectId === id), m = totals(rows);
+      return { id: id ?? 'none', name: rows[0].project?.name ?? 'Без проекта', income: m.income, expense: m.expense,
+        investment: m.invested, returns: m.returned, fees: m.commissions, result: m.result, netCashFlow: m.netCashFlow, unvaluedCount: m.unvaluedCount };
+    });
+    const spotPnl = sumMoney(spot.map(x => x.realizedPnl)), futuresPnl = sumMoney(futures.map(x => x.realizedPnl));
+    return NextResponse.json({ summary: { income: t.income, expense: t.expense, investment: t.invested,
+      investmentReturn: t.returned, commission: t.commissions, operatingResult: t.result, netCashFlow: t.netCashFlow, unvaluedCount: t.unvaluedCount },
+      trading: { spotPnl, spotFees: sumMoney(spot.map(x => x.fee)), futuresPnl,
+        futuresFees: sumMoney(futures.map(x => x.fees.plus(x.funding))), totalRealizedPnl: spotPnl.plus(futuresPnl) },
+      byAsset: [...byAsset].map(([asset, amount]) => ({ asset, amount })), projects,
+      counts: { transactions: tx.length, spotTrades: spot.length, futuresTrades: futures.length } });
+  } catch (error) { return apiError(error); }
+}
