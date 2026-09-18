@@ -1,3 +1,5 @@
+import { loadEnvFile } from 'node:process';
+try { loadEnvFile('.env'); } catch (e) { if (e.code !== 'ENOENT') throw e; }
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
@@ -14,7 +16,7 @@ const assets = [
   ['TON','Toncoin','CRYPTO',8],['DOT','Polkadot','CRYPTO',8],['UNI','Uniswap','CRYPTO',8]
 ];
 
-async function ensureAccount(ledgerId, name, type, assetCode) {
+async function ensureAccount(prisma, ledgerId, name, type, assetCode) {
   const asset = await prisma.asset.findUnique({ where: { code: assetCode } });
   if (!asset) throw new Error(`Asset ${assetCode} not found`);
   const existing = await prisma.account.findFirst({ where: { ledgerId, name } });
@@ -23,6 +25,8 @@ async function ensureAccount(ledgerId, name, type, assetCode) {
 }
 
 async function main() {
+ await prisma.$transaction(async prisma => {
+  await prisma.$executeRaw`SELECT pg_advisory_xact_lock(741003)`;
   for (const [code,name,type,decimals] of assets) {
     await prisma.asset.upsert({
       where: { code },
@@ -38,21 +42,22 @@ async function main() {
     });
   }
 
-  let ledger = await prisma.ledger.findFirst({ where: { name: 'Основной', status: 'ACTIVE' } });
+  let ledger = await prisma.ledger.findFirst({ where: { name: 'Основной' } });
   if (!ledger) {
     ledger = await prisma.ledger.create({
       data: { name: 'Основной', description: 'Основной Ledger для Pilot v0.1', baseCurrency: 'USD', status: 'ACTIVE' }
     });
   }
 
-  await ensureAccount(ledger.id, 'Касса USD', 'CASH', 'USD');
-  await ensureAccount(ledger.id, 'Банк USD', 'BANK', 'USD');
-  await ensureAccount(ledger.id, 'Касса TJS', 'CASH', 'TJS');
-  await ensureAccount(ledger.id, 'USDT Wallet', 'CRYPTO_WALLET', 'USDT');
-  await ensureAccount(ledger.id, 'Binance Spot', 'EXCHANGE_SPOT', 'USDT');
-  await ensureAccount(ledger.id, 'Binance Futures', 'EXCHANGE_FUTURES', 'USDT');
+  await ensureAccount(prisma, ledger.id, 'Касса USD', 'CASH', 'USD');
+  await ensureAccount(prisma, ledger.id, 'Банк USD', 'BANK', 'USD');
+  await ensureAccount(prisma, ledger.id, 'Касса TJS', 'CASH', 'TJS');
+  await ensureAccount(prisma, ledger.id, 'USDT Wallet', 'CRYPTO_WALLET', 'USDT');
+  await ensureAccount(prisma, ledger.id, 'Binance Spot', 'EXCHANGE_SPOT', 'USDT');
+  await ensureAccount(prisma, ledger.id, 'Binance Futures', 'EXCHANGE_FUTURES', 'USDT');
 
   console.log('Pilot seed completed:', { assets: assets.length, project: generalProject.name, ledger: ledger.name });
+ }, { timeout: 30000 });
 }
 
 main().catch(error => { console.error(error); process.exit(1); }).finally(async () => { await prisma.$disconnect(); });

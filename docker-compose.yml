@@ -7,7 +7,12 @@ services:
       POSTGRES_USER: finance_user
       POSTGRES_PASSWORD: finance_password
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U finance_user -d finance_investment"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
     volumes:
       - finance_postgres_data:/var/lib/postgresql/data
 
