@@ -15,3 +15,5 @@ Login limiting: single-process in-memory, 5 failed/pending attempts per IP/email
 CSP blocks objects/frames and restricts origins. Inline scripts/styles remain allowed for Next.js hydration and current UI; strict nonce/hash CSP is deferred. No HSTS is sent by the app while local HTTP remains supported; configure HTTPS/HSTS at the deployment edge. No private exchange APIs are connected.
 
 Posted data/audit immutability is enforced at the API, not against privileged database administrators. Password reset is administrator-set and does not implement email recovery or mandatory first-login rotation. HTTPS, unique AUTH_SECRET, database credentials and backup protection are deployment prerequisites.
+
+Local backup validation completed 2026-09-19 using official EDB PostgreSQL 18.6 clients against PostgreSQL 18.4: exact Decimal retained, later row absent from restored separate DB, source intact. Client archive source: https://www.enterprisedb.com/download-postgresql-binaries . No new GitHub Actions result is claimed.
