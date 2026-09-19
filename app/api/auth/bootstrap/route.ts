@@ -4,9 +4,10 @@ import {hashPassword,issueSession,sessionCookie} from '../../../../src/auth/serv
 import {apiError} from '../../../../src/lib/api-error';
 export async function POST(req:Request){
   try {
+    if(await prisma.user.count()>0)return NextResponse.json({error:'Первичная настройка уже выполнена'},{status:409});
     const b=await req.json(),name=String(b.name||'').trim(),email=String(b.email||'').trim().toLowerCase(),password=String(b.password||'');
-    if(!name||!/^\S+@\S+\.\S+$/.test(email)||password.length<10||Buffer.byteLength(password,'utf8')>72)
-      return NextResponse.json({error:'Укажите имя, email и пароль от 10 символов до 72 байт'},{status:400});
+    if(!name||name.length>200||email.length>254||!/^\S+@\S+\.\S+$/.test(email))
+      return NextResponse.json({error:'Укажите корректные имя и email'},{status:400});
     const passwordHash=await hashPassword(password);
     const result=await prisma.$transaction(async tx=>{
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(741001)`;

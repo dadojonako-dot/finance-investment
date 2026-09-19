@@ -78,6 +78,7 @@ model User {
   id String @id @default(cuid())
   email String @unique
   passwordHash String
+  sessionVersion Int @default(0)
   name String
   role Role @default(VIEWER)
   isActive Boolean @default(true)
@@ -223,8 +224,8 @@ model Project {
 }
 model AuditLog {
   id String @id @default(cuid())
-  userId String
-  user User @relation(fields:[userId],references:[id])
+  userId String?
+  user User? @relation(fields:[userId],references:[id])
   entityType String
   entityId String
   action String
