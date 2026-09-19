@@ -70,6 +70,7 @@ try{
   await api('/api/audit',null,'GET',role==='ADMIN'?200:403);
   await api('/api/transactions',{...common,type:'INCOME',amount:'1'},'POST',['ADMIN','FINANCE','ACCOUNTANT'].includes(role)?201:403);
   await api('/api/spot-trades',{ledgerId,exchangeAccountId:spot.id,symbol:'BTCUSDT',side:'BUY',quantity:'1',price:'1'},'POST',['ADMIN','TRADER'].includes(role)?201:403);
+  await api('/api/futures-trades',{ledgerId,exchangeAccountId:futures.id,symbol:'BTCUSDT',side:'LONG',quantity:'1',entryPrice:'100',exitPrice:'101',leverage:'2',openedAt:'2026-09-17T10:00:00Z',closedAt:'2026-09-17T12:00:00Z'},'POST',['ADMIN','TRADER'].includes(role)?201:403);
   if(role==='VIEWER'){
    const viewerCookie=cookie;cookie=ownerCookie;await api('/api/users',{id:created.id,isActive:false},'PATCH',200);cookie=viewerCookie;await api('/api/dashboard',null,'GET',401);
   }
@@ -85,7 +86,7 @@ try{
  const healthResponse=await fetch(base+'/api/health');assert.equal(healthResponse.status,200);const health=await healthResponse.json();assert.equal(health.status,'ok');assert.equal(health.database,'ok');assert.equal(health.version,readFileSync('src/config/version.ts','utf8').match(/'([^']+)'/)[1]);
  for(const name of ['x-content-type-options','referrer-policy','x-frame-options','permissions-policy','content-security-policy'])assert(healthResponse.headers.get(name),name);
  const loginResponse=await fetch(base+'/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(credentials)});assert.equal(loginResponse.status,200);const header=loginResponse.headers.get('set-cookie');for(const flag of ['HttpOnly','Secure','SameSite=lax','Max-Age=43200'])assert(header.toLowerCase().includes(flag.toLowerCase()),flag);
- const payload=JSON.parse(Buffer.from(header.split(';')[0].split('=')[1].split('.')[1],'base64url'));assert(!('role' in payload));assert(!('email' in payload));
+ const payload=JSON.parse(Buffer.from(header.split(';')[0].split('=')[1].split('.')[1],'base64url'));assert(!('role' in payload));assert(!('email' in payload));assert.equal(payload.exp-payload.iat,43200);
  pass('Public health, version, security headers and production session cookie');
  const malformed=await fetch(base+'/api/auth/bootstrap',{method:'POST',body:'not json'});assert.equal(malformed.status,409);
  for(const weak of ['password123','123456789012','abcdefghijk'])await api('/api/users',{name:'Weak',email:'weak@example.test',role:'VIEWER',password:weak},'POST',400);
@@ -132,6 +133,7 @@ try{
  const midnightProject=await api('/api/projects',{name:'Midnight '+Date.now(),status:'ACTIVE'});
  for(const operationDate of ['2026-09-17T18:59:59.999Z','2026-09-17T19:00:00.000Z','2026-09-18T18:59:59.999Z','2026-09-18T19:00:00.000Z'])await api('/api/transactions',{...op,projectId:midnightProject.id,type:'INCOME',amount:'1',operationDate});
  const midnightReport=await api('/api/reports?projectId='+midnightProject.id+'&from=2026-09-18&to=2026-09-18');assert.equal(midnightReport.counts.transactions,2);pass('HTTP Dushanbe midnight boundaries');
+ const auditedKinds=await db.auditLog.findMany({distinct:['entityType'],select:{entityType:true}});for(const kind of ['Ledger','Account','Project','Transaction','Transfer','FxExchange','SpotTrade','FuturesTrade'])assert(auditedKinds.some(x=>x.entityType===kind),kind);
  writeFileSync('test-results/acceptance.json',JSON.stringify({base,passed,completedAt:new Date().toISOString()},null,2));
  console.log(`ACCEPTANCE PASSED: ${passed.length} groups`);
 }finally{await db.$disconnect()}

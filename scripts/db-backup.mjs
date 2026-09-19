@@ -7,7 +7,7 @@ const mode=process.argv[2],args=process.argv.slice(3),url=new URL(process.env.DA
 const source=decodeURIComponent(url.pathname.slice(1));
 const option=k=>args[args.indexOf(k)+1];
 const compose=process.env.PILOT_DB_TOOLS==='compose';
-const env={...process.env,PGHOST:url.hostname,PGPORT:url.port||'5432',PGUSER:decodeURIComponent(url.username),PGPASSWORD:decodeURIComponent(url.password)};
+const env={...process.env,PGHOST:url.hostname,PGPORT:url.port||'5432',PGUSER:decodeURIComponent(url.username),PGPASSWORD:decodeURIComponent(url.password),...(url.searchParams.has('sslmode')?{PGSSLMODE:url.searchParams.get('sslmode')}:{})};
 async function run(tool,params,input,output){
  const command=compose?'docker':process.env.PG_BIN?join(process.env.PG_BIN,tool+(process.platform==='win32'?'.exe':'')):tool;
  const argv=compose?['compose','exec','-T','-e','PGPASSWORD','postgres',tool,'-h','127.0.0.1','-U',env.PGUSER,...params]:params;
@@ -15,7 +15,8 @@ async function run(tool,params,input,output){
  // Diagnostics may contain connection details; deliberately keep failures generic.
  child.stderr.resume();child.on('error',()=>fail(new Error(tool+' could not start')));
  child.on('close',code=>code===0?ok():fail(new Error(tool+' failed; check PostgreSQL availability and permissions')));
- if(input)input.pipe(child.stdin);else child.stdin.end();
+ if(input){input.on('error',()=>{child.kill();fail(new Error('Cannot read backup file'))});input.pipe(child.stdin)}else child.stdin.end();
+ if(output)output.on('error',()=>{child.kill();fail(new Error('Cannot write backup file'))});
  child.stdin.on('error',()=>{});
  if(output)child.stdout.pipe(output);else child.stdout.resume();
  });

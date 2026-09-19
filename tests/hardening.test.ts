@@ -15,6 +15,7 @@ test('financial scenarios and exact Decimal arithmetic',()=>{
  assert.equal(totals([{type:'INCOME',usdAmount:'1000'},{type:'EXPENSE',usdAmount:'-300'},{type:'COMMISSION',usdAmount:'-20'}]).result.toString(),'680');
 });
 test('Dushanbe midnight includes its UTC predecessor and excludes next midnight',()=>{
+ for(const invalid of ['2026-02-30','2026-13-01','2026-02-30T12:00:00Z'])assert.throws(()=>dateValue(invalid));
  const f=dateFilter(new URLSearchParams('from=2026-09-18&to=2026-09-18'))!;
  assert.equal((f.gte as Date).toISOString(),'2026-09-17T19:00:00.000Z');
  assert.equal((f.lt as Date).toISOString(),'2026-09-18T19:00:00.000Z');
