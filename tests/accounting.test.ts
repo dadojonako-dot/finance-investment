@@ -25,9 +25,9 @@ test('USD defaults to 1; other assets remain explicitly unvalued', () => {
 test('reject nonfinite and overprecision amounts', () => {
   for (const value of ['NaN','Infinity','0.00000000001','100000000000000000000']) assert.throws(() => decimal(value));
 });
-test('UTC day filters include the final millisecond and reject bad ranges', () => {
+test('Dushanbe day filters include the final millisecond and reject bad ranges', () => {
   const d = dateFilter(new URLSearchParams('from=2026-09-17&to=2026-09-17'))!;
-  assert.equal((d.lt as Date).toISOString(), '2026-09-18T00:00:00.000Z');
+  assert.equal((d.lt as Date).toISOString(), '2026-09-17T19:00:00.000Z');
   assert.throws(() => dateFilter(new URLSearchParams('from=2026-02-30')));
   assert.throws(() => dateFilter(new URLSearchParams('from=2026-09-18&to=2026-09-17')));
 });

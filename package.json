@@ -16,11 +16,14 @@
     "pilot:check": "node scripts/check-env.mjs && prisma validate && prisma generate && npm run typecheck && npm test && npm run build",
     "db:migrate:dev": "prisma migrate dev",
     "typecheck": "tsc --noEmit",
-    "test": "tsc -p tsconfig.tests.json && node --test test-results/compiled/tests/accounting.test.js",
-    "test:acceptance": "node scripts/acceptance.mjs"
+    "test": "tsc -p tsconfig.tests.json && node --test test-results/compiled/tests/*.test.js",
+    "test:acceptance": "node scripts/acceptance.mjs",
+    "db:backup": "node scripts/db-backup.mjs backup",
+    "db:restore": "node scripts/db-backup.mjs restore",
+    "test:backup": "node scripts/backup-acceptance.mjs"
   },
   "dependencies": {
-    "@prisma/client": "6.19.0",
+    "@prisma/client": "6.19.3",
     "bcryptjs": "3.0.3",
     "jose": "6.2.12",
     "lightweight-charts": "5.2.1",
@@ -32,7 +35,7 @@
     "@types/node": "22.20.3",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
-    "prisma": "6.19.0",
+    "prisma": "6.19.3",
     "typescript": "7.0.2"
   },
   "engines": {

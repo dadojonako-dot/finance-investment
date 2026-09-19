@@ -1,7 +1,7 @@
 name: Pilot acceptance
 on:
   push:
-    branches: [main, 'codex/pilot-v0.1']
+    branches: [main, 'codex/pilot-v0.1', 'codex/pilot-v0.1.1-hardening']
   pull_request:
 permissions:
   contents: read
@@ -31,6 +31,23 @@ jobs:
           npm run start -- --hostname 127.0.0.1 --port 3100 > /tmp/pilot-server.log 2>&1 &
           for i in $(seq 1 30); do curl -fsS http://127.0.0.1:3100/login > /dev/null && break; sleep 1; done
           npm run test:acceptance
+      - name: Backup and isolated restore acceptance
+        env:
+          PILOT_TEST_ALLOW_WRITE: '1'
+          PILOT_DB_TOOLS: compose
+        run: npm run test:backup
+      - name: Health failure stays safe
+        run: |
+          DATABASE_URL='postgresql://invalid:invalid@127.0.0.1:1/unavailable?connect_timeout=2' npm run start -- --hostname 127.0.0.1 --port 3102 > /tmp/health-server.log 2>&1 &
+          for i in $(seq 1 30); do curl -s http://127.0.0.1:3102/login > /dev/null && break; sleep 1; done
+          node -e "fetch('http://127.0.0.1:3102/api/health').then(async r=>{const b=await r.json();if(r.status!==503||b.database!=='unavailable'||JSON.stringify(b).includes('postgresql'))process.exit(1)})"
+      - name: Upload safe test evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: pilot-hardening-evidence
+          path: |
+            test-results/acceptance.json
+            test-results/backup.json
       - name: Server diagnostics
         if: failure()
         run: cat /tmp/pilot-server.log || true

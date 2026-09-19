@@ -117,3 +117,7 @@ Futures P&L = разница цен с учётом LONG/SHORT × quantity − f
 
 Следующий этап: закрыть dependency advisories, настроить backup/restore,
 нагрузочные проверки, пагинацию и политику отзыва сессий; затем интеграции бирж.
+
+## Hardening release
+
+See [pre-merge evidence](outputs/PRE_MERGE_REPORT.md), [security assessment](outputs/SECURITY_REPORT.md), [backup/restore](docs/BACKUP_AND_RESTORE.md), [timezone](docs/TIMEZONE.md), and [immutability](docs/ACCOUNTING_IMMUTABILITY.md). App version is defined in `src/config/version.ts`. Configure HTTPS and trusted proxy IP handling before deployment.
